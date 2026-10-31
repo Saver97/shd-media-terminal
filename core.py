@@ -224,6 +224,16 @@ class Service:
         state = self.store.snapshot()
         return {'history': state['dispatch_history'], 'handed_off': state['handed_off'], 'subscriptions': state['subscriptions']}
 
+    def delete_history(self, data):
+        hashes = data.get('hashes', [])
+        if not isinstance(hashes, list) or any(not isinstance(h, str) for h in hashes):
+            raise ValueError('无效的记录选择')
+        selected = set(hashes)
+        def update(state):
+            state['dispatch_history'] = [h for h in state['dispatch_history'] if h['hash'] not in selected]
+        self.store.change(update)
+        return self.library({})
+
     def settings(self, data):
         settings = {k: str(data.get(k, '')).strip() for k in ('proxy_mode', 'proxy_url', 'thunder_path')}
         path = settings['thunder_path']

@@ -24,7 +24,7 @@ class Bridge(QObject):
         self.pool = ThreadPoolExecutor(max_workers=6)
         self.pending = 0
         self.allowed = {'bootstrap', 'search', 'library', 'settings', 'test_proxy', 'launch_thunder',
-                        'subscribe', 'unsubscribe', 'check_subscriptions', 'calendar', 'calendar_covers', 'calendar_titles', 'subscription_covers'}
+                        'delete_history', 'subscribe', 'unsubscribe', 'check_subscriptions', 'calendar', 'calendar_covers', 'calendar_titles', 'subscription_covers'}
 
     @Slot(str, str, str)
     def request(self, request_id, method, payload):

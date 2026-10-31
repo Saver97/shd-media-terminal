@@ -18,7 +18,36 @@ function renderResults() {if(!state.query)return;const rows=state.items.filter(r
 async function search(page=1) {const query=$('search-query').value.trim();if(!query)return;const serial=++state.request;$('search-button').disabled=true;$('search-button').textContent='搜索中…';try{const result=await api('search',{query,page});if(serial!==state.request)return;state.items=result.items;state.query=query;state.page=page;state.hasMore=result.has_more;renderResults();if(result.items.length)selected(result.items[0],query);}finally{if(serial===state.request){$('search-button').disabled=false;$('search-button').textContent='搜索';}}}
 function showDialog(id){$(id).showModal();}
 async function handoff(resource){if(state.busy)return;state.busy=true;try{const result=await api('launch_thunder',{resource});state.history=result.history;state.handedOff=result.handed_off||state.handedOff||[];renderHistory();toast('已向迅雷发送磁链，请在迅雷中选择文件和保存位置。');}finally{state.busy=false;}}
-function renderHistory(){$('history-list').innerHTML=state.history.map((h,i)=>`<article class="resource"><div class="pick history-title">${esc(h.title)}</div><div class="row"><span class="metadata">${esc(h.time)} · 已发送启动请求</span><button data-history="${i}">再次交给迅雷</button></div></article>`).join('')||empty('还没有交接记录','点击资源的“迅雷下载”后，会记录在这里。');$('history-list').querySelectorAll('[data-history]').forEach(b=>b.onclick=()=>attempt(()=>handoff(state.history[Number(b.dataset.history)].resource)));}
+const historySelection=new Set();
+let historyBusy=false;
+function updateHistoryControls(){
+ const available=new Set(state.history.map(h=>h.hash));
+ for(const hash of historySelection)if(!available.has(hash))historySelection.delete(hash);
+ $('history-resend').textContent=historyBusy?'处理中…':`再次交接 (${historySelection.size})`;
+ for(const id of ['history-resend','history-delete','history-clear'])$(id).disabled=historyBusy||!historySelection.size;
+ $('history-all').disabled=historyBusy||!state.history.length;
+ $('history-list').querySelectorAll('[data-history-check]').forEach(c=>{c.checked=historySelection.has(c.dataset.historyCheck);c.disabled=historyBusy;});
+}
+function renderHistory(){
+ $('history-list').innerHTML=state.history.map(h=>`<article class="resource"><div class="row"><input type="checkbox" class="resource-check" data-history-check="${esc(h.hash)}" aria-label="选择 ${esc(h.title)}"><div class="pick history-title">${esc(h.title)}</div></div><span class="metadata">${esc(h.time)} · 已发送启动请求</span></article>`).join('')||empty('还没有交接记录','点击资源的“迅雷下载”后，会记录在这里。');
+ $('history-list').querySelectorAll('[data-history-check]').forEach(c=>c.onchange=()=>{c.checked?historySelection.add(c.dataset.historyCheck):historySelection.delete(c.dataset.historyCheck);updateHistoryControls();});
+ updateHistoryControls();
+}
+async function resendHistory(){
+ if(state.busy||historyBusy)return;
+ const rows=state.history.filter(h=>historySelection.has(h.hash));if(!rows.length)return;
+ state.busy=true;historyBusy=true;updateHistoryControls();let sent=0,failed=0;
+ try{for(const h of rows){try{const result=await api('launch_thunder',{resource:h.resource});state.history=result.history;state.handedOff=result.handed_off||state.handedOff||[];historySelection.delete(h.hash);sent++;}catch(e){failed++;}}
+ toast(`已向迅雷发送 ${sent} 条${failed?`，${failed} 条失败，保留勾选可重试`:''}。`,failed>0);
+ }finally{state.busy=false;historyBusy=false;renderHistory();}
+}
+async function deleteHistory(){
+ if(state.busy||historyBusy||!historySelection.size)return;
+ historyBusy=true;state.busy=true;updateHistoryControls();
+ try{const result=await api('delete_history',{hashes:[...historySelection]});state.history=result.history;state.handedOff=result.handed_off;historySelection.clear();toast('所选记录已删除，迅雷任务不受影响。');}
+ finally{historyBusy=false;state.busy=false;renderHistory();}
+}
+
 
 function openSubscription(item=null){$('sub-query').value=item?(state.selectedQuery||item.title):(state.query||$('search-query').value.trim());$('sub-group').value=item?.group||'';$('sub-quality').value=item?.quality==='未标注'?'':item?.quality||'';$('sub-subtitle').value=item?.subtitle==='未标注'?'':item?.subtitle||'';$('subscribe-error').textContent='';showDialog('subscribe-dialog');}
 const foldedSubscriptions = (()=>{try{const ids=JSON.parse(localStorage.getItem('shd.subscriptionFolds')||'[]');return new Set(Array.isArray(ids)?ids.filter(x=>typeof x==='string'):[]);}catch{return new Set();}})();
@@ -109,3 +138,8 @@ $('expand-subscriptions').onclick=()=>foldAllSubscriptions(false);
 $('select-subscriptions').onclick=()=>{selectSubscriptionResources(subscriptionResources());};
 $('clear-subscriptions').onclick=()=>{subscriptionSelection.clear();updateSubscriptionBatch();};
 $('download-subscriptions').onclick=()=>attempt(downloadSubscriptions);
+
+$('history-all').onclick=()=>{state.history.forEach(h=>historySelection.add(h.hash));updateHistoryControls();};
+$('history-clear').onclick=()=>{historySelection.clear();updateHistoryControls();};
+$('history-resend').onclick=()=>attempt(resendHistory);
+$('history-delete').onclick=()=>attempt(deleteHistory);
