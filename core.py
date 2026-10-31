@@ -72,6 +72,7 @@ class Store:
                 defaults.update(loaded)
             except (ValueError, OSError) as e:
                 raise RuntimeError('本地配置读取失败，请检查 data/library.json；原文件未覆盖') from e
+        defaults.setdefault('handed_off', list({h['hash'] for h in defaults['dispatch_history'] if h.get('hash')}))
         defaults['settings'].setdefault('thunder_path', detect_thunder())
         self.data = defaults
 
@@ -166,7 +167,7 @@ class Service:
     def bootstrap(self, _):
         state = self.store.snapshot()
         return {'settings': state['settings'], 'subscriptions': state['subscriptions'],
-                'history': state['dispatch_history'], 'version': '0.4.0'}
+                'history': state['dispatch_history'], 'handed_off': state['handed_off'], 'version': '0.4.0'}
 
     def search(self, data):
         return search_source(self.store.snapshot()['settings'], data.get('query'), data.get('page', 1))
@@ -221,7 +222,7 @@ class Service:
 
     def library(self, _):
         state = self.store.snapshot()
-        return {'history': state['dispatch_history'], 'subscriptions': state['subscriptions']}
+        return {'history': state['dispatch_history'], 'handed_off': state['handed_off'], 'subscriptions': state['subscriptions']}
 
     def settings(self, data):
         settings = {k: str(data.get(k, '')).strip() for k in ('proxy_mode', 'proxy_url', 'thunder_path')}
@@ -256,9 +257,11 @@ class Service:
         item = {'hash': hash_value, 'title': str(resource.get('title') or hash_value),
                 'time': time.strftime('%Y-%m-%d %H:%M'), 'resource': dict(resource)}
         def update(state):
+            state['handed_off'] = sorted(set(state['handed_off']) | {hash_value})
             state['dispatch_history'] = [item] + [h for h in state['dispatch_history'] if h['hash'] != hash_value][:99]
         self.store.change(update)
-        return {'history': self.store.snapshot()['dispatch_history']}
+        snapshot = self.store.snapshot()
+        return {'history': snapshot['dispatch_history'], 'handed_off': snapshot['handed_off']}
 
     def subscribe(self, data):
         query = str(data.get('query', '')).strip()[:180]
