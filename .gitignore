@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+data/
+downloads/
+engines/
+research/
+*.log
+*.lnk
+.env
+.env.*
+dist/
+build/
