@@ -167,7 +167,7 @@ class Service:
     def bootstrap(self, _):
         state = self.store.snapshot()
         return {'settings': state['settings'], 'subscriptions': state['subscriptions'],
-                'history': state['dispatch_history'], 'handed_off': state['handed_off'], 'version': '0.4.0'}
+                'history': state['dispatch_history'], 'handed_off': state['handed_off'], 'version': '0.5.0'}
 
     def search(self, data):
         return search_source(self.store.snapshot()['settings'], data.get('query'), data.get('page', 1))

@@ -2,7 +2,7 @@
 
 一款面向 Windows 的轻量桌面工具：查看每周新番、搜索动漫花园资源、追踪订阅更新，并把选中的磁力链接交给本机迅雷。
 
-界面采用简约深色与橙色点缀，基于 Python、PySide6 和 Qt WebEngine。当前提供源码运行方式，尚无独立安装包。
+界面采用简约深色与橙色点缀，基于 Python、PySide6 和 Qt WebEngine。提供 Windows x64 便携版，也支持源码运行。
 
 ## 功能
 
@@ -15,6 +15,12 @@
 - **中文名称**：优先展示上游中文名，缺失时尝试带标记的暂译或机翻。
 
 应用不包含 BT 下载引擎，不下载、缓存或播放视频。迅雷接收磁链后，由用户在迅雷中确认文件及保存位置；“已发送”仅表示已发出启动请求，不代表下载成功。
+
+## 下载便携版
+
+打开 [GitHub Releases](https://github.com/Saver97/shd-media-terminal/releases/latest)，下载 `SHD-Media-Terminal-v0.5.0-windows-x64.zip`，完整解压到有写入权限的目录，双击 `SHD-Media-Terminal.exe`。不需要安装 Python；迅雷仍需自行安装。不要只复制 EXE，旁边的 Qt 运行库和资源目录也是必需文件。
+
+设置及记录保存在便携版目录下的 `data/`，升级时可从旧目录复制此文件夹。发行包不包含个人设置或历史记录。
 
 ## 安装与启动
 
@@ -84,6 +90,17 @@ python -m venv .venv
 | `title_names.py` | 中文名及翻译缓存 |
 | `ui/` | HTML、CSS、JavaScript 和本地图标 |
 | `tests/` | 核心逻辑测试 |
+
+## 构建 Windows 便携版
+
+在安装好运行依赖的 Windows Python 环境中执行：
+
+```powershell
+python -m pip install pyinstaller==6.22.3
+python build_release.py
+```
+
+输出目录为 `dist/SHD-Media-Terminal/`，发布时压缩整个目录。打包采用 [PyInstaller onedir](https://www.pyinstaller.org/en/stable/man/pyinstaller.html) 布局。
 
 ## 许可证
 
